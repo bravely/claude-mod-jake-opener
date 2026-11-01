@@ -1,0 +1,6 @@
+{
+  "name": "openers-band-prototype",
+  "version": "0.1.0",
+  "description": "PROTOTYPE, throw away: four variants of the Openers band above the prompt",
+  "types": "./types/index.d.ts"
+}
