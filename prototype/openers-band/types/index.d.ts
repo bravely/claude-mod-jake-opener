@@ -8,6 +8,9 @@ declare module 'claude-code' {
       variant: Variant
       fixture: Fixture
       forkRule: ForkRule
+      // fork-point branch → which of its children the ladder follows
+      forkPicks: Record<string, number>
+      isStackOpen: boolean
     }
   }
 }

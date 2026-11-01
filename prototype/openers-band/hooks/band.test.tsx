@@ -20,3 +20,18 @@ test('every variant draws every fixture on desktop', async $ => {
   expect((await ui.find({ key: 'variant' }))?.text).toMatch(/^A: Chip row/)
   await ui.unmount()
 })
+
+test('the ladder steps through the branches at each fork', async $ => {
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as never)
+  await ui.press({ key: 'variant' })
+  await ui.press({ key: 'variant' }) // C: Ladder
+  await ui.press({ key: 'fixture' })
+  await ui.press({ key: 'fixture' }) // Forked Stack
+  await ui.press({ key: 'fork' }) // every branch
+  expect((await ui.find({ key: 'fork-c' }))?.text).toMatch(/^\[⑂ 1\/2\]/)
+  expect((await ui.find({ key: 'fork-d' }))?.text).toMatch(/^\[⑂ 1\/2\]/)
+  await ui.press({ key: 'fork-c', link: { href: 'https://fork.invalid/c' } })
+  expect((await ui.find({ key: 'fork-c' }))?.text).toMatch(/^\[⑂ 2\/2\]/)
+  expect(await ui.find({ key: 'fork-d' })).toBeUndefined() // #304's branch has no fork
+  await ui.unmount()
+})
