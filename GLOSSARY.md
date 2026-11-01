@@ -5,8 +5,12 @@ A Claude Code mod that puts one-press links beside a session for opening the thi
 ## Language
 
 **Opener**:
-One kind of one-press link: a label plus the rule that resolves what it opens from the session's context.
+One kind of one-press link: a name plus the rule that resolves what it opens, from the session or from one pull request in the Stack. It is shown exactly when that rule resolves a Target.
 _Avoid_: Quick link, shortcut, action
+
+**Band control**:
+Something in the band that changes what the band shows (stepping through a fork, toggling the Stack pane) or marks a branch's state, rather than opening a Target. Not an Opener.
+_Avoid_: Button, Opener
 
 **Target**:
 The concrete thing an Opener resolves to and opens, such as a URL or a directory.
