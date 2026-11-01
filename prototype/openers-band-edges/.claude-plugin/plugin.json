@@ -1,0 +1,6 @@
+{
+  "name": "openers-band-edges",
+  "version": "0.1.0",
+  "description": "PROTOTYPE, throw away: the Openers band with no Stack or a broken one",
+  "types": "./types/index.d.ts"
+}
