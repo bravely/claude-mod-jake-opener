@@ -1,0 +1,6 @@
+{
+  "name": "pr-link-decoration-prototype",
+  "version": "0.1.0",
+  "description": "PROTOTYPE, throw away: four variants of PR link decoration in the transcript",
+  "types": "./types/index.d.ts"
+}
