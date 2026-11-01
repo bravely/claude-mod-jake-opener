@@ -93,6 +93,9 @@ const GRAPHITE_SVG =
   '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#9aa0a6" d="m15.215 0-12 3.215-3.215 12L8.785 24l12-3.215 3.215-12L15.215 0Zm1.958 20.966H6.827L1.655 12l5.172-8.966h10.346L22.345 12l-5.172 8.966Zm.68-14.823L9.86 4 4.006 9.858l2.14 8 7.995 2.141 5.853-5.857-2.14-8Z"/></svg>'
 
 const forkHref = (at: string) => `https://fork.invalid/${at}`
+// what gt state marks `trunk: true`
+const TRUNK = 'main'
+
 const graphite = (n: number) => `https://app.graphite.com/github/pr/bravely/demarest_mays/${n}`
 const github = (n: number) => `https://github.com/bravely/demarest_mays/pull/${n}`
 
@@ -199,10 +202,30 @@ async function editorCommand($: EngineInterface) {
   return editorFromShell || undefined
 }
 
+// this worktree: the git top level of the session's cwd
 async function openEditor($: EngineInterface) {
   const cwd = await $.session.cwd()
   const top = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd })
-  const dir = top.exitCode === 0 ? top.stdout.trim() : cwd
+  await openDir($, top.exitCode === 0 ? top.stdout.trim() : cwd)
+}
+
+// trunk: the worktree with trunk checked out, whichever it is; the main
+// checkout may be on another branch, so the common dir's parent won't do
+async function openTrunkEditor($: EngineInterface) {
+  const cwd = await $.session.cwd()
+  const list = await $.process.run(['git', 'worktree', 'list', '--porcelain'], { cwd })
+  const entry = list.stdout
+    .split('\n\n')
+    .find(block => block.split('\n').includes(`branch refs/heads/${TRUNK}`))
+  const dir = entry?.split('\n')[0]?.replace(/^worktree /, '')
+  if (!dir) {
+    $.ui.toast(`${TRUNK} isn't checked out in any worktree`)
+    return
+  }
+  await openDir($, dir)
+}
+
+async function openDir($: EngineInterface, dir: string) {
   const raw = await editorCommand($)
   const argv = raw?.trim().split(/\s+/).filter(a => a !== '--wait' && a !== '-w') ?? []
   const cmd = argv.length ? [...argv, dir] : ['open', dir]
@@ -285,6 +308,24 @@ export const register: Register = on => {
         onPress={() => toggleStack($, n)}
       />
     )
+    // links the mod answers itself, one line high where a native button would
+    // stretch the row; the .invalid hrefs are never opened
+    const editorLink = (id: string, open: () => void) => (
+      <Markdown
+        key={`editor-${id}`}
+        text={`[‹/›](https://editor.invalid/${id})`}
+        pressableLinks={[`https://editor.invalid/${id}`]}
+        onLinkPress={open}
+      />
+    )
+    const stackLink = (n: number) => (
+      <Markdown
+        key="stack"
+        text={`[${isOpen ? '◧' : '◨'} Stack (${n})](https://stack.invalid/)`}
+        pressableLinks={['https://stack.invalid/']}
+        onLinkPress={() => toggleStack($, n)}
+      />
+    )
     const forkButton = (n: number) => (
       <Button key="fork" label={`⑂ ${n} above`} dimColor onPress={() => openPane($, n)} />
     )
@@ -349,18 +390,23 @@ export const register: Register = on => {
       // circle, which swaps that row (and all above it) for the next branch
       const picks = await read($, forkPicks)
       const sc = shape(STACKS[fx], rule, rule === 'all' ? picks : undefined)
-      const parentAt = sc ? Math.max(0, sc.rows.findIndex(r => r.isCurrent) - 1) : 0
-      const shown = !sc ? [] : rule === 'all' ? sc.rows.slice(parentAt) : ladderWindow(sc.rows).shown
+      // the ladder runs from the top down to trunk, every row; a band too short
+      // for it scrolls (the desktop's, not the mod's); Stack (n) is for what it
+      // leaves out (unpicked branches)
+      const shown = sc ? sc.rows : []
       const stepFork = (via: Via) =>
         update($, forkPicks, all => ({ ...all, [via.at]: (via.i + 1) % via.n }))
       body = (
         <Box flexDirection="column">
-          <Box flexDirection="row" gap="xs" alignItems="center" marginBottom="sm">
-            {editor}
-            {sc && sc.all.length > shown.length && stackButton(sc.all.length)}
-            {!sc && noStack}
-          </Box>
           <Box flexDirection="column" rowGap="xs">
+          {!sc && (
+            <Box flexDirection="row" gap="xs" alignItems="center" paddingX={1}>
+              <Box width={4} flexShrink={0}>
+                {editorLink('worktree', () => openEditor($))}
+              </Box>
+              {noStack}
+            </Box>
+          )}
           {[...shown].reverse().map(r => (
             <Box flexDirection="column">
               <Box
@@ -370,8 +416,10 @@ export const register: Register = on => {
                 paddingX={1}
                 backgroundColor={r.isCurrent ? 'promptBorder' : undefined}
               >
-                {rule === 'all' && (
-                  <Box width={4} flexShrink={0}>
+                {/* the gutter: ⑂ on a row reached through a fork, ‹/› on the
+                    current row, which never is (forks resolve above it) */}
+                <Box width={4} flexShrink={0}>
+                    {r.isCurrent && editorLink('worktree', () => openEditor($))}
                     {r.via && (
                       // a link the mod answers itself: looks like the PR links,
                       // steps the fork; the .invalid href is never opened
@@ -382,8 +430,7 @@ export const register: Register = on => {
                         onLinkPress={() => stepFork(r.via!)}
                       />
                     )}
-                  </Box>
-                )}
+                </Box>
                 <Text color={mark(r).color} dimColor={mark(r).dim}>
                   {mark(r).glyph}
                 </Text>
@@ -418,6 +465,15 @@ export const register: Register = on => {
               </Box>
             </Box>
           ))}
+          {sc && (
+            <Box flexDirection="row" gap="xs" alignItems="center" paddingX={1}>
+              <Box width={4} flexShrink={0}>
+                {editorLink('trunk', () => openTrunkEditor($))}
+              </Box>
+              <Text dimColor>┴ {TRUNK}</Text>
+              {sc.all.length > shown.length && stackLink(sc.all.length)}
+            </Box>
+          )}
           </Box>
         </Box>
       )

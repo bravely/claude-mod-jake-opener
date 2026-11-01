@@ -10,7 +10,8 @@ test('every variant draws every fixture on desktop', async $ => {
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as never)
   for (let v = 0; v < 4; v++) {
     for (let d = 0; d < 5; d++) {
-      expect(await ui.find({ key: 'editor' })).toBeDefined()
+      const editor = (await ui.find({ key: 'editor' })) ?? (await ui.find({ key: 'editor-worktree' }))
+      expect(editor).toBeDefined()
       expect(await ui.find({ key: 'variant' })).toBeDefined()
       await ui.press({ key: 'fixture' })
     }
@@ -28,6 +29,10 @@ test('the ladder steps through the branches at each fork', async $ => {
   await ui.press({ key: 'fixture' })
   await ui.press({ key: 'fixture' }) // Forked Stack
   await ui.press({ key: 'fork' }) // every branch
+  expect((await ui.find({ type: 'Text', text: /┴ main/ }))?.text).toBe('┴ main')
+  expect(await ui.find({ key: 'editor-worktree' })).toBeDefined()
+  expect(await ui.find({ key: 'editor-trunk' })).toBeDefined()
+  expect((await ui.find({ key: 'stack' }))?.text).toMatch(/◨ Stack \(7\)/)
   expect((await ui.find({ key: 'fork-c' }))?.text).toMatch(/^\[⑂ 1\/2\]/)
   expect((await ui.find({ key: 'fork-d' }))?.text).toMatch(/^\[⑂ 1\/2\]/)
   await ui.press({ key: 'fork-c', link: { href: 'https://fork.invalid/c' } })
