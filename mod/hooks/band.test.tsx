@@ -43,7 +43,7 @@ test('a fork shows one branch at a time, and stepping it swaps that row and ever
     '‹/› ● [Graphite]#298 Give each worktree its own ports',
     '● [Graphite]#297 Add worktree dev databases',
     '● [Graphite]#295 Split settings into sections',
-    '‹/› ┴ main',
+    '‹/› ┴ main ◨ Stack (7)',
   ])
 
   await ui.press({ key: 'fork-ports', link: { href: 'https://fork.invalid/ports' } })

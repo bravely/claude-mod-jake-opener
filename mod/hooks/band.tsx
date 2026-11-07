@@ -4,6 +4,7 @@ import type { EngineInterface, MatchedHook, RenderChildren, ThemeKey } from 'cla
 import type { PrRef, PrState } from '../types'
 import { COMMANDS, readRunning, runCommand } from './commands'
 import { OPENERS, openTarget, type Opener } from './openers'
+import { readPaneOpen, togglePane } from './pane'
 import { CIRCLES, GRAPHITE_SVG } from './pr'
 import { readSnapshot } from './snapshot'
 import { bandModel, nextPick } from './stack'
@@ -38,6 +39,7 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
   if (!s) return next(e)
   const band = bandModel(s, await read($, forkPicks))
   const busy = await readRunning($)
+  const isPaneOpen = await readPaneOpen($)
   const { Box, Link, Markdown, Svg, Text } = $.ui.resolve(e)
 
   // every link is disabled while a command runs, so clicks don't queue
@@ -175,6 +177,8 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
           {t.isCurrent && <Text dimColor>(trunk)</Text>}
         </Text>,
         ...trail(t.trail, 'trunk'),
+        t.stackCount !== undefined &&
+          control('stack', `${isPaneOpen ? '◧' : '◨'} Stack (${t.stackCount})`, href('stack'), () => togglePane($)),
       ])}
     </Box>
   )

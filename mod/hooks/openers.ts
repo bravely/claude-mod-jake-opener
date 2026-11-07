@@ -2,7 +2,7 @@ import type { EngineInterface } from 'claude-code'
 
 import type { PrRef, Snapshot } from '../types'
 import { launchEditor } from './editor'
-import { graphiteUrl } from './pr'
+import { githubUrl, graphiteUrl } from './pr'
 
 export type Target = { kind: 'url'; url: string } | { kind: 'directory'; path: string }
 
@@ -14,7 +14,7 @@ export type Opener = {
   resolve(snapshot: Snapshot, pr?: PrRef): Target | undefined
 }
 
-export const OPENERS: Record<'worktreeEditor' | 'trunkEditor' | 'graphite', Opener> = {
+export const OPENERS: Record<'worktreeEditor' | 'trunkEditor' | 'graphite' | 'github', Opener> = {
   worktreeEditor: {
     id: 'worktree-editor',
     label: 'Worktree editor',
@@ -32,6 +32,12 @@ export const OPENERS: Record<'worktreeEditor' | 'trunkEditor' | 'graphite', Open
     label: 'Graphite',
     scope: 'pr',
     resolve: (_, pr) => pr && { kind: 'url', url: graphiteUrl(pr) },
+  },
+  github: {
+    id: 'github',
+    label: 'GitHub',
+    scope: 'pr',
+    resolve: (_, pr) => pr && { kind: 'url', url: githubUrl(pr) },
   },
 }
 
