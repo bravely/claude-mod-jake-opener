@@ -1,16 +1,29 @@
-export type PrRef = { owner: string; repo: string; number: number }
+import type { ThemeKey } from 'claude-code'
+
+import type { PrRef, PrState } from '../types'
 
 const NAME = String.raw`[\w.-]+`
 
 // A GitHub PR URL up to its number, with no groups, for scanning text.
 export const GITHUB_PR = String.raw`https://github\.com/${NAME}/${NAME}/pull/\d+`
 
-const PR_URL = new RegExp(String.raw`^https://github\.com/(${NAME})/(${NAME})/pull/(\d+)(?:[/?#]|$)`)
+const PR_URL = new RegExp(
+  String.raw`^https://(?:github\.com/(${NAME})/(${NAME})/pull|app\.graphite\.com/github/pr/(${NAME})/(${NAME}))/(\d+)(?:[/?#]|$)`,
+)
 
+// gt's cache spells a PR as its Graphite link, gh and ccd_pr as its GitHub URL
 export function parsePrUrl(url: string): PrRef | undefined {
   const m = PR_URL.exec(url)
+  if (!m) return undefined
 
-  return m ? { owner: m[1]!, repo: m[2]!, number: Number(m[3]) } : undefined
+  return { owner: (m[1] ?? m[3])!, repo: (m[2] ?? m[4])!, number: Number(m[5]) }
+}
+
+// ccd_pr's `repo` is `owner/name`
+export function prFromRepo(repo: string, number: number): PrRef | undefined {
+  const [owner, name, ...rest] = repo.split('/')
+
+  return owner && name && rest.length === 0 ? { owner, repo: name, number } : undefined
 }
 
 export const githubUrl = (pr: PrRef) => `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.number}`
@@ -26,3 +39,11 @@ export const GITHUB_SVG =
 // band, so it is filled grey
 export const GRAPHITE_SVG =
   '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#9aa0a6" d="m15.215 0-12 3.215-3.215 12L8.785 24l12-3.215 3.215-12L15.215 0Zm1.958 20.966H6.827L1.655 12l5.172-8.966h10.346L22.345 12l-5.172 8.966Zm.68-14.823L9.86 4 4.006 9.858l2.14 8 7.995 2.141 5.853-5.857-2.14-8Z"/></svg>'
+
+export const CIRCLES: Record<PrState, { glyph: string; color?: ThemeKey; dim?: true }> = {
+  open: { glyph: '●', color: 'success' },
+  draft: { glyph: '◯', color: 'inactive' },
+  merged: { glyph: '✓', color: 'merged' },
+  closed: { glyph: '✕', color: 'error' },
+  none: { glyph: '◌', dim: true },
+}
