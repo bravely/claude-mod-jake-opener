@@ -70,3 +70,27 @@ export const BAND = {
     view: {},
   },
 } as const
+
+export type Ran = { exitCode: number; stdout?: string; stderr?: string } | 'not on PATH'
+
+// The host: every command the mod runs, what each answers, and the toasts.
+export function host(on: On, answer: (argv: readonly string[]) => Ran | Promise<Ran> = () => ({ exitCode: 0 })) {
+  const runs: (readonly string[])[] = []
+  const dirs: (string | undefined)[] = []
+  const toasts: string[] = []
+  on('process.run', async (_, e) => {
+    runs.push(e.argv)
+    dirs.push(e.init?.cwd)
+    const ran = await answer(e.argv)
+    if (ran === 'not on PATH') return { deny: `${e.argv[0]}: command not found` }
+    const { exitCode, stdout = '', stderr = '' } = ran
+
+    return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+
+  return { runs, dirs, toasts }
+}

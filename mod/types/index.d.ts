@@ -47,6 +47,7 @@ declare module 'claude-code' {
       snapshot: Shaped<Snapshot | null>
       // fork branch → the child the ladder follows
       forkPicks: Record<string, string>
+      reportedErrors: string | null
     }
   }
 }

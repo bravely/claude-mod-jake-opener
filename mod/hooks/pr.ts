@@ -7,12 +7,23 @@ const NAME = String.raw`[\w.-]+`
 // A GitHub PR URL up to its number, with no groups, for scanning text.
 export const GITHUB_PR = String.raw`https://github\.com/${NAME}/${NAME}/pull/\d+`
 
-const PR_URL = new RegExp(String.raw`^https://github\.com/(${NAME})/(${NAME})/pull/(\d+)(?:[/?#]|$)`)
+const PR_URL = new RegExp(
+  String.raw`^https://(?:github\.com/(${NAME})/(${NAME})/pull|app\.graphite\.com/github/pr/(${NAME})/(${NAME}))/(\d+)(?:[/?#]|$)`,
+)
 
+// gt's cache spells a PR as its Graphite link, gh and ccd_pr as its GitHub URL
 export function parsePrUrl(url: string): PrRef | undefined {
   const m = PR_URL.exec(url)
+  if (!m) return undefined
 
-  return m ? { owner: m[1]!, repo: m[2]!, number: Number(m[3]) } : undefined
+  return { owner: (m[1] ?? m[3])!, repo: (m[2] ?? m[4])!, number: Number(m[5]) }
+}
+
+// ccd_pr's `repo` is `owner/name`
+export function prFromRepo(repo: string, number: number): PrRef | undefined {
+  const [owner, name, ...rest] = repo.split('/')
+
+  return owner && name && rest.length === 0 ? { owner, repo: name, number } : undefined
 }
 
 export const githubUrl = (pr: PrRef) => `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.number}`
