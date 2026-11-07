@@ -1,0 +1,6 @@
+{
+  "name": "jake-opener",
+  "version": "0.1.0",
+  "description": "Openers band above the prompt, a Stack pane, and Graphite links on PR links, for the desktop Code tab",
+  "author": { "name": "Jake Demarest-Mays" }
+}
