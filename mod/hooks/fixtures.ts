@@ -71,6 +71,21 @@ export const BAND = {
   },
 } as const
 
+export const PANE = {
+  plugin: 'jake-opener',
+  surface: 'desktop',
+  component: 'Pane',
+  requestId: 'jake-opener-stack',
+  props: {
+    title: 'Stack',
+    isFocused: false,
+    bodyColumns: 60,
+    placement: 'dock',
+    scroll: { offset: 0, bodyRows: 20 },
+    view: {},
+  },
+} as const
+
 export type Ran = { exitCode: number; stdout?: string; stderr?: string } | 'not on PATH'
 
 // The host: every command the mod runs, what each answers, and the toasts.

@@ -3,6 +3,7 @@ import type { Register } from 'claude-code'
 import { renderBand } from './band'
 import { attachBandRuns, clearRunning } from './commands'
 import { decorateReply } from './decorate'
+import { PANE, notePaneClosed, renderPane, syncPaneOpen } from './pane'
 import {
   refreshAfterBash,
   refreshOnAttach,
@@ -16,7 +17,7 @@ import {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    await clearRunning($)
+    await Promise.all([clearRunning($), syncPaneOpen($)])
     startRefreshing($)
 
     return started
@@ -30,5 +31,7 @@ export const register: Register = on => {
   on('prompt.submit', attachBandRuns)
 
   on('ui.render', { component: 'AbovePrompt' }, renderBand)
+  on('ui.render', { component: 'Pane', requestId: PANE }, renderPane)
+  on('ui.close', { id: PANE }, notePaneClosed)
   on('ui.render', { component: 'AssistantMessage' }, decorateReply)
 }

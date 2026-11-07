@@ -28,7 +28,13 @@ export type LadderRow = {
   trail: Trail[]
 }
 
-type TrunkRow = { name: string; isCurrent: boolean; trail: Trail[] }
+type TrunkRow = {
+  name: string
+  isCurrent: boolean
+  trail: Trail[]
+  // the Stack's branch count, when the ladder hides some of them
+  stackCount?: number
+}
 
 type RailRow = { pr: PrRef; state: PrState; title: string }
 
@@ -37,6 +43,8 @@ export type Band =
   | { kind: 'detached'; rail: RailRow[]; sha: string }
   // `stack`: every branch of the Stack, whether the ladder shows it or not
   | { kind: 'ladder'; rail: RailRow[]; rows: LadderRow[]; trunk: TrunkRow; stack: LadderRow[] }
+
+type PaneRow = LadderRow & { depth: number }
 
 // Per PR, the first source that knows it: gh from this session, then ccd_pr,
 // then gt's cache.
@@ -202,8 +210,9 @@ function ladderOf(s: RepoSnapshot, current: string, picks: Record<string, string
     ...below(s.gtState, current).map(b => ladderRow(s, b, current)),
   ]
   const stack = tree(s, current).map(r => ladderRow(s, r.branch, current))
+  const stackCount = stack.length > rows.length ? stack.length : undefined
 
-  return { rows, trunk: { isCurrent: false, trail: [] }, stack }
+  return { rows, trunk: { isCurrent: false, trail: [], stackCount }, stack }
 }
 
 export function bandModel(s: Snapshot, picks: Record<string, string>): Band {
@@ -213,4 +222,16 @@ export function bandModel(s: Snapshot, picks: Record<string, string>): Band {
   const { rows, trunk, stack } = ladderOf(s, current, picks)
 
   return { kind: 'ladder', rail: railRows(s, prUrls(stack)), rows, trunk: { name: s.trunk ?? 'trunk', ...trunk }, stack }
+}
+
+// the whole Stack for the pane, every fork branch included
+export function paneRows(s: Snapshot): { trunk: string; rows: PaneRow[] } | undefined {
+  if (s.topLevel === null) return undefined
+  const current = currentBranch(s)
+  if (!current || !s.gtState[current] || s.gtState[current].isTrunk) return undefined
+
+  return {
+    trunk: s.trunk ?? 'trunk',
+    rows: tree(s, current).map(({ branch, depth }) => ({ ...ladderRow(s, branch, current), depth })),
+  }
 }
