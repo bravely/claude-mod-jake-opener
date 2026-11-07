@@ -1,3 +1,7 @@
 import type { Register } from 'claude-code'
 
-export const register: Register = () => {}
+import { decorateReply } from './decorate'
+
+export const register: Register = on => {
+  on('ui.render', { component: 'AssistantMessage' }, decorateReply)
+}
