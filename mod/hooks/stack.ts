@@ -1,4 +1,4 @@
-import type { GtBranch, KnownPr, PrRef, PrState, RepoSnapshot, Snapshot } from '../types'
+import type { CommandLink, GtBranch, KnownPr, PrRef, PrState, RepoSnapshot, Snapshot } from '../types'
 import { githubUrl } from './pr'
 
 export type PrLookup =
@@ -8,8 +8,12 @@ export type PrLookup =
   | { kind: 'pending' }
   | { kind: 'failed'; error: string }
 
+export type RowLink = CommandLink | 'fix'
+
 // what follows a row's title, in order
-export type Trail = { kind: 'note'; text: string; isProblem: boolean }
+export type Trail =
+  | { kind: 'note'; text: string; isProblem: boolean }
+  | { kind: 'link'; link: RowLink }
 
 // a row reached through a fork: child i of n at branch `at`
 export type Via = { at: string; i: number; n: number }
@@ -115,13 +119,19 @@ export function nextPick(s: Snapshot, via: Via): string | undefined {
 }
 
 const note = (text: string, isProblem = false): Trail => ({ kind: 'note', text, isProblem })
+const link = (l: RowLink): Trail => ({ kind: 'link', link: l })
 
 function ladderRow(s: RepoSnapshot, branch: string, current: string, via?: Via): LadderRow {
   const lookup = lookupPr(s, branch)
   const state = stateOf(lookup)
+  const gt = s.gtState[branch]
   const trail: Trail[] = []
+  if (gt?.needsRestack && state !== 'closed') trail.push(link('restack'))
   if (lookup.kind === 'failed') trail.push(note(lookup.error, true))
-  if (branch === current && s.rebase !== undefined) trail.push(note('rebase stopped on a conflict', true))
+  if (gt && state === 'merged') trail.push(link('sync'))
+  if (branch === current && s.rebase !== undefined) {
+    trail.push(note('rebase stopped on a conflict', true), link('fix'))
+  }
 
   return {
     branch,
@@ -169,7 +179,7 @@ function ladderOf(s: RepoSnapshot, current: string, picks: Record<string, string
   if (!s.gtInstalled || !s.gtInitialised) {
     const rows = [ladderRow(s, current, current)]
     const trail = s.gtInstalled
-      ? [note('gt not initialised here', true)]
+      ? [note('gt not initialised here', true), link('init')]
       : [note('gt not installed', true)]
 
     return { rows, trunk: { isCurrent: false, trail }, stack: rows }
@@ -179,7 +189,7 @@ function ladderOf(s: RepoSnapshot, current: string, picks: Record<string, string
   }
   if (!s.gtState[current]) {
     const row = ladderRow(s, current, current)
-    row.trail.push(note('not tracked'))
+    row.trail.push(note('not tracked'), link('track'))
 
     return { rows: [row], trunk: { isCurrent: false, trail: [] }, stack: [row] }
   }

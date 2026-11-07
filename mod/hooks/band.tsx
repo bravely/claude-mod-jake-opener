@@ -2,11 +2,12 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, MatchedHook, RenderChildren, ThemeKey } from 'claude-code'
 
 import type { PrRef, PrState } from '../types'
+import { COMMANDS, readRunning, runCommand } from './commands'
 import { OPENERS, openTarget, type Opener } from './openers'
 import { CIRCLES, GRAPHITE_SVG } from './pr'
 import { readSnapshot } from './snapshot'
 import { bandModel, nextPick } from './stack'
-import type { LadderRow, PrLookup, Trail, Via } from './stack'
+import type { LadderRow, PrLookup, RowLink, Trail, Via } from './stack'
 
 const forkPicks = atom({ plugin: 'jake-opener', key: 'forkPicks' } as const, {})
 
@@ -28,16 +29,24 @@ async function stepFork($: EngineInterface, via: Via) {
   if (pick) await update($, forkPicks, picks => ({ ...picks, [via.at]: pick }))
 }
 
+const fixPrompt = (branch: string) =>
+  `The restack of ${branch} stopped on a conflict. Resolve the conflict and continue the restack.`
+
 export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> = async ($, e, next) => {
   if (e.surface !== 'desktop' || e.props.hasSurvey) return next(e)
   const s = await readSnapshot($)
   if (!s) return next(e)
   const band = bandModel(s, await read($, forkPicks))
+  const busy = await readRunning($)
   const { Box, Link, Markdown, Svg, Text } = $.ui.resolve(e)
 
-  const control = (key: string, label: string, target: string, onPress: () => unknown) => (
-    <Markdown key={key} text={`[${label}](${target})`} pressableLinks={[target]} onLinkPress={() => void onPress()} />
-  )
+  // every link is disabled while a command runs, so clicks don't queue
+  const control = (key: string, label: string, target: string, onPress: () => unknown) =>
+    busy ? (
+      <Text dimColor>{label}</Text>
+    ) : (
+      <Markdown key={key} text={`[${label}](${target})`} pressableLinks={[target]} onLinkPress={() => void onPress()} />
+    )
   const worktreeEditor = control('editor-worktree', '‹/›', href('editor', 'worktree'), () =>
     openEditor($, OPENERS.worktreeEditor),
   )
@@ -85,20 +94,27 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
     }
   }
 
-  const trail = (items: Trail[]) =>
-    items.map(t =>
-      t.isProblem ? (
-        <Text color="error">· {t.text}</Text>
-      ) : (
+  const rowLink = (link: RowLink, branch: string) =>
+    link === 'fix'
+      ? control(`fix-${branch}`, 'fix it', href('fix', branch), () => $.prompt.fill({ text: fixPrompt(branch) }))
+      : control(`${link}-${branch}`, COMMANDS[link].label, href(link, branch), () => runCommand($, link, branch))
+  const trail = (items: Trail[], key: string) => [
+    ...items.map(t => {
+      if (t.kind === 'link') return rowLink(t.link, key)
+      if (t.isProblem) return <Text color="error">· {t.text}</Text>
+
+      return (
         <Text dimColor italic>
           · {t.text}
         </Text>
-      ),
-    )
+      )
+    }),
+    busy?.row === key && <Text dimColor>running…</Text>,
+  ]
 
   const ladderRow = (r: LadderRow) => {
     const isGone = r.state === 'merged' || r.state === 'closed'
-    const hasProblem = r.trail.some(t => t.isProblem)
+    const hasProblem = r.trail.some(t => t.kind === 'note' && t.isProblem)
     const via = r.via
     const left = via
       ? control(`fork-${via.at}`, `⑂ ${via.i + 1}/${via.n}`, href('fork', via.at), () => stepFork($, via))
@@ -111,7 +127,7 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
       <Text bold={r.isCurrent} dimColor={!r.isCurrent || isGone} strikethrough={isGone}>
         {r.title}
       </Text>,
-      ...trail(r.trail),
+      ...trail(r.trail, r.branch),
     ])
   }
 
@@ -158,7 +174,7 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
           </Text>
           {t.isCurrent && <Text dimColor>(trunk)</Text>}
         </Text>,
-        ...trail(t.trail),
+        ...trail(t.trail, 'trunk'),
       ])}
     </Box>
   )
