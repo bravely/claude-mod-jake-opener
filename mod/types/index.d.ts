@@ -48,6 +48,7 @@ declare module 'claude-code' {
       // fork branch → the child the ladder follows
       forkPicks: Record<string, string>
       reportedErrors: string | null
+      editorCommand: string[] | null
     }
   }
 }

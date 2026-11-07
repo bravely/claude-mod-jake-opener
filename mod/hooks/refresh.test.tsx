@@ -106,9 +106,9 @@ test('once the desktop attaches, the band draws what git, gt, its cache, ccd_pr 
     '● [Graphite]#12 Probe gt sync',
     '──────────',
     '◯ [Graphite]#300 Seed per-worktree fixtures',
-    '● [Graphite]#298 Give each worktree its own ports',
+    '‹/› ● [Graphite]#298 Give each worktree its own ports',
     '✓ [Graphite]#295 Split settings into sections',
-    '┴ main',
+    '‹/› ┴ main',
   ])
   await ui.unmount()
 })
@@ -275,8 +275,8 @@ test('without gt on PATH the band says gt is not installed', async ($, on) => {
   await clock.advance(250)
   const ui = await $.ui.mount(BAND)
   expect(lines(await ui.drawn()).slice(-2)).toEqual([
-    '● [Graphite]#298 Give each worktree its own ports',
-    '┴ main · gt not installed',
+    '‹/› ● [Graphite]#298 Give each worktree its own ports',
+    '‹/› ┴ main · gt not installed',
   ])
   await ui.unmount()
 })

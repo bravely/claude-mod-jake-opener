@@ -6,10 +6,10 @@ import { lines } from './shown'
 const LADDER = [
   '● [Graphite]#301 Session cookie per worktree',
   '◯ [Graphite]#300 Seed per-worktree fixtures',
-  '● [Graphite]#298 Give each worktree its own ports',
+  '‹/› ● [Graphite]#298 Give each worktree its own ports',
   '● [Graphite]#297 Add worktree dev databases',
   '● [Graphite]#295 Split settings into sections',
-  '┴ main',
+  '‹/› ┴ main',
 ]
 
 test('the ladder runs from the top of the Stack down to trunk, every row shown', async ($, on) => {
@@ -40,16 +40,16 @@ test('a fork shows one branch at a time, and stepping it swaps that row and ever
   expect(lines(await ui.drawn())).toEqual([
     '⑂ 1/2 ● [Graphite]#301 Session cookie per worktree',
     '⑂ 1/2 ◯ [Graphite]#300 Seed per-worktree fixtures',
-    '● [Graphite]#298 Give each worktree its own ports',
+    '‹/› ● [Graphite]#298 Give each worktree its own ports',
     '● [Graphite]#297 Add worktree dev databases',
     '● [Graphite]#295 Split settings into sections',
-    '┴ main',
+    '‹/› ┴ main',
   ])
 
   await ui.press({ key: 'fork-ports', link: { href: 'https://fork.invalid/ports' } })
   expect(lines(await ui.drawn()).slice(0, 2)).toEqual([
     '⑂ 2/2 ◯ [Graphite]#304 Try ports via env instead',
-    '● [Graphite]#298 Give each worktree its own ports',
+    '‹/› ● [Graphite]#298 Give each worktree its own ports',
   ])
 
   await ui.press({ key: 'fork-ports', link: { href: 'https://fork.invalid/ports' } })
@@ -88,7 +88,7 @@ const cases = [
   {
     name: '1, on trunk',
     snapshot: repo({ branch: 'main' }),
-    band: ['┴ main(trunk) · gt create to start a Stack'],
+    band: ['‹/› ┴ main(trunk) · gt create to start a Stack'],
   },
   {
     name: '2, a branch gt does not track, with a PR from gh',
@@ -96,24 +96,24 @@ const cases = [
       branch: 'jake/scratch',
       ghPrs: { byBranch: { 'jake/scratch': pr(310, 'open', 'Scratch: try a new seed script') }, titles: {} },
     }),
-    band: ['● [Graphite]#310 Scratch: try a new seed script · not tracked', '┴ main'],
+    band: ['‹/› ● [Graphite]#310 Scratch: try a new seed script · not tracked', '‹/› ┴ main'],
   },
   {
     name: '2, a branch gt does not track, with no PR',
     snapshot: repo({ branch: 'jake/scratch' }),
-    band: ['◌ no PR jake/scratch · not tracked', '┴ main'],
+    band: ['‹/› ◌ no PR jake/scratch · not tracked', '‹/› ┴ main'],
   },
   {
     name: '3, detached HEAD',
     snapshot: repo({ branch: 'HEAD' }),
-    band: ['◌ detached at 1e806cb'],
+    band: ['‹/› ◌ detached at 1e806cb'],
   },
   {
     name: '4, a rebase stopped on a conflict',
     snapshot: repo({ branch: 'HEAD', rebase: 'ports' }),
     band: [
       ...LADDER.slice(0, 2),
-      '● [Graphite]#298 Give each worktree its own ports · rebase stopped on a conflict',
+      '‹/› ● [Graphite]#298 Give each worktree its own ports · rebase stopped on a conflict',
       ...LADDER.slice(3),
     ],
   },
@@ -126,17 +126,17 @@ const cases = [
       prCache: undefined,
       ghPrs: { byBranch: { feature: pr(312, 'open', 'Add CSV export') }, titles: {} },
     }),
-    band: ['● [Graphite]#312 Add CSV export', '┴ main · gt not initialised here'],
+    band: ['‹/› ● [Graphite]#312 Add CSV export', '‹/› ┴ main · gt not initialised here'],
   },
   {
     name: '5b, gt not installed',
     snapshot: repo({ branch: 'feature', gtState: {}, gtInitialised: false, gtInstalled: false }),
-    band: ['◌ no PR feature', '┴ main · gt not installed'],
+    band: ['‹/› ◌ no PR feature', '‹/› ┴ main · gt not installed'],
   },
   {
     name: '6, not a git repo',
     snapshot: { cwd: '/Users/bravely/Downloads/notes', topLevel: null },
-    band: ['/Users/bravely/Downloads/notes'],
+    band: ['‹/› /Users/bravely/Downloads/notes'],
   },
   {
     name: '7, a merged PR in the Stack not yet synced',
@@ -148,7 +148,7 @@ const cases = [
       ...LADDER.slice(0, 3),
       '● [Graphite]#297 Add worktree dev databases',
       '✓ [Graphite]#295 Split settings into sections',
-      '┴ main',
+      '‹/› ┴ main',
     ],
   },
   {

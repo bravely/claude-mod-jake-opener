@@ -2,7 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, MatchedHook, RenderChildren, ThemeKey } from 'claude-code'
 
 import type { PrRef, PrState } from '../types'
-import { CIRCLES, GRAPHITE_SVG, graphiteUrl } from './pr'
+import { OPENERS, openTarget, type Opener } from './openers'
+import { CIRCLES, GRAPHITE_SVG } from './pr'
 import { readSnapshot } from './snapshot'
 import { bandModel, nextPick } from './stack'
 import type { LadderRow, PrLookup, Trail, Via } from './stack'
@@ -13,7 +14,14 @@ const forkPicks = atom({ plugin: 'jake-opener', key: 'forkPicks' } as const, {})
 // high where a native Button would stretch the row; `.invalid` never opens.
 const href = (name: string, id = '') => `https://${name}.invalid/${encodeURIComponent(id)}`
 
-// A press reads the Snapshot as it is now, not as it was drawn.
+// Presses read the Snapshot as it is now, not as it was drawn.
+async function openEditor($: EngineInterface, opener: Opener, missing?: string) {
+  const s = await readSnapshot($)
+  const target = s && opener.resolve(s)
+  if (target) openTarget($, opener, target)
+  else if (missing) $.ui.toast(missing)
+}
+
 async function stepFork($: EngineInterface, via: Via) {
   const s = await readSnapshot($)
   const pick = s && nextPick(s, via)
@@ -29,6 +37,9 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
 
   const control = (key: string, label: string, target: string, onPress: () => unknown) => (
     <Markdown key={key} text={`[${label}](${target})`} pressableLinks={[target]} onLinkPress={() => void onPress()} />
+  )
+  const worktreeEditor = control('editor-worktree', '‹/›', href('editor', 'worktree'), () =>
+    openEditor($, OPENERS.worktreeEditor),
   )
 
   const gutter = (child?: RenderChildren) => (
@@ -47,14 +58,20 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
     </Text>
   )
   // an Svg can't sit inside a Link, so the icon only abuts it, in a gapless Box
-  const graphiteLink = (pr: PrRef, isCurrent: boolean) => (
-    <Box flexDirection="row" alignItems="center" gap={0}>
-      <Svg source={GRAPHITE_SVG} alt="Graphite" width={14} height={14} />
-      <Link href={graphiteUrl(pr)}>
-        <Text bold={isCurrent}>#{pr.number}</Text>
-      </Link>
-    </Box>
-  )
+  const graphiteLink = (pr: PrRef, isCurrent: boolean) => {
+    const target = OPENERS.graphite.resolve(s, pr)
+
+    return (
+      target?.kind === 'url' && (
+        <Box flexDirection="row" alignItems="center" gap={0}>
+          <Svg source={GRAPHITE_SVG} alt="Graphite" width={14} height={14} />
+          <Link href={target.url}>
+            <Text bold={isCurrent}>#{pr.number}</Text>
+          </Link>
+        </Box>
+      )
+    )
+  }
   const prCell = (lookup: PrLookup, isCurrent: boolean) => {
     switch (lookup.kind) {
       case 'found':
@@ -83,7 +100,9 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
     const isGone = r.state === 'merged' || r.state === 'closed'
     const hasProblem = r.trail.some(t => t.isProblem)
     const via = r.via
-    const left = via && control(`fork-${via.at}`, `⑂ ${via.i + 1}/${via.n}`, href('fork', via.at), () => stepFork($, via))
+    const left = via
+      ? control(`fork-${via.at}`, `⑂ ${via.i + 1}/${via.n}`, href('fork', via.at), () => stepFork($, via))
+      : r.isCurrent && worktreeEditor
 
     return row(`row-${r.branch}`, r.isCurrent ? (hasProblem ? 'diffRemovedDimmed' : 'promptBorder') : undefined, [
       gutter(left),
@@ -97,7 +116,7 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
   }
 
   if (band.kind === 'folder') {
-    return row('folder', undefined, [gutter(), <Text dimColor>{band.path}</Text>])
+    return row('folder', undefined, [gutter(worktreeEditor), <Text dimColor>{band.path}</Text>])
   }
 
   const rail = band.rail.map(r =>
@@ -115,12 +134,15 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
       <Box flexDirection="column" rowGap="xs">
         {rail}
         {rule}
-        {row('detached', 'promptBorder', [gutter(), circle('none'), <Text bold>detached at {band.sha}</Text>])}
+        {row('detached', 'promptBorder', [gutter(worktreeEditor), circle('none'), <Text bold>detached at {band.sha}</Text>])}
       </Box>
     )
   }
 
   const t = band.trunk
+  const trunkEditor = control('editor-trunk', '‹/›', href('editor', 'trunk'), () =>
+    openEditor($, OPENERS.trunkEditor, `No worktree has ${t.name} checked out`),
+  )
 
   return (
     <Box flexDirection="column" rowGap="xs">
@@ -128,7 +150,7 @@ export const renderBand: MatchedHook<'ui.render', { component: 'AbovePrompt' }> 
       {rule}
       {band.rows.map(ladderRow)}
       {row('trunk', t.isCurrent ? 'promptBorder' : undefined, [
-        gutter(),
+        gutter(t.isCurrent ? worktreeEditor : trunkEditor),
         // one Text, so the row's gap doesn't split "main(trunk)"
         <Text>
           <Text bold={t.isCurrent} dimColor={!t.isCurrent}>
