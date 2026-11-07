@@ -1,4 +1,4 @@
-import type { PrRef } from '../types'
+export type PrRef = { owner: string; repo: string; number: number }
 
 const NAME = String.raw`[\w.-]+`
 

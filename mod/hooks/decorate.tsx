@@ -1,7 +1,6 @@
 import type { MatchedHook } from 'claude-code'
 
-import type { PrRef } from '../types'
-import { GITHUB_PR, GITHUB_SVG, GRAPHITE_SVG, githubUrl, graphiteUrl, parsePrUrl } from './pr'
+import { GITHUB_PR, GITHUB_SVG, GRAPHITE_SVG, type PrRef, githubUrl, graphiteUrl, parsePrUrl } from './pr'
 
 // what may follow the number: `/files`, an anchor; no `.`, so a full stop
 // after a bare URL stays text
