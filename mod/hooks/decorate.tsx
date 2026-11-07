@@ -9,18 +9,16 @@ const FENCE = /^\s*(```|~~~)/
 const PATH = String.raw`(?:/[\w/#?=&%-]*)?`
 const END = String.raw`(?![\w/#?=&%-])`
 
-// A code span is matched only to be left alone. A markdown link counts once
-// its `)` has streamed in and an autolink once its `>` has; a bare URL is never
-// the inside of either.
-const SCAN = new RegExp(
-  [
-    String.raw`(?<code>(\`+)[^\n]*?\2)`,
-    String.raw`\[(?<label>[^\]\n]*)\]\((?<linked>${GITHUB_PR}${PATH})${END}\)`,
-    String.raw`<(?<auto>${GITHUB_PR}${PATH})${END}>`,
-    String.raw`(?<![\w/<])(?<!\]\()(?<bare>${GITHUB_PR}${PATH})${END}`,
-  ].join('|'),
-  'g',
-)
+// matched only to be left alone, so a URL inside backticks is never decorated
+const CODE_SPAN = String.raw`(?<code>(\`+)[^\n]*?\2)`
+// these two count only once their closing `)` or `>` has streamed in
+const MARKDOWN_LINK = String.raw`\[(?<label>[^\]\n]*)\]\((?<linked>${GITHUB_PR}${PATH})${END}\)`
+const AUTOLINK = String.raw`<(?<auto>${GITHUB_PR}${PATH})${END}>`
+// not after `<` or `](`, the half-streamed forms of the two above
+const BARE_URL = String.raw`(?<![\w/<])(?<!\]\()(?<bare>${GITHUB_PR}${PATH})${END}`
+
+// order matters: a code span is consumed before any URL inside it is seen
+const SCAN = new RegExp([CODE_SPAN, MARKDOWN_LINK, AUTOLINK, BARE_URL].join('|'), 'g')
 
 type Groups = { code?: string; label?: string; linked?: string; auto?: string; bare?: string }
 
