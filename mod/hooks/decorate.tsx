@@ -3,7 +3,6 @@ import type { MatchedHook } from 'claude-code'
 import type { PrRef } from '../types'
 import { GITHUB_PR, GITHUB_SVG, GRAPHITE_SVG, githubUrl, graphiteUrl, parsePrUrl } from './pr'
 
-const FENCE = /^\s*(```|~~~)/
 // what may follow the number: `/files`, an anchor; no `.`, so a full stop
 // after a bare URL stays text
 const PATH = String.raw`(?:/[\w/#?=&%-]*)?`
@@ -12,7 +11,7 @@ const END = String.raw`(?![\w/#?=&%-])`
 // matched only to be left alone, so a URL inside backticks is never decorated
 const CODE_SPAN = String.raw`(?<code>(\`+)[^\n]*?\2)`
 // these two count only once their closing `)` or `>` has streamed in
-const MARKDOWN_LINK = String.raw`\[(?<label>[^\]\n]*)\]\((?<linked>${GITHUB_PR}${PATH})${END}\)`
+const MARKDOWN_LINK = String.raw`\[[^\]\n]*\]\((?<linked>${GITHUB_PR}${PATH})${END}\)`
 const AUTOLINK = String.raw`<(?<auto>${GITHUB_PR}${PATH})${END}>`
 // not after `<` or `](`, the half-streamed forms of the two above
 const BARE_URL = String.raw`(?<![\w/<])(?<!\]\()(?<bare>${GITHUB_PR}${PATH})${END}`
@@ -20,30 +19,37 @@ const BARE_URL = String.raw`(?<![\w/<])(?<!\]\()(?<bare>${GITHUB_PR}${PATH})${EN
 // order matters: a code span is consumed before any URL inside it is seen
 const SCAN = new RegExp([CODE_SPAN, MARKDOWN_LINK, AUTOLINK, BARE_URL].join('|'), 'g')
 
-type Groups = { code?: string; label?: string; linked?: string; auto?: string; bare?: string }
-
 // The reply's text with a Graphite link after each PR link, and every PR it
 // mentions, first mention first. Code is left as written.
 export function decorateText(text: string): { text: string; prs: PrRef[] } {
   const prs = new Map<string, PrRef>()
   let isFenced = false
   const lines = text.split('\n').map(line => {
-    if (FENCE.test(line)) {
+    if (/^\s*(```|~~~)/.test(line)) {
       isFenced = !isFenced
       return line
     }
     if (isFenced) return line
 
-    return line.replace(SCAN, (whole: string, ...rest: unknown[]) => {
-      const g = rest.at(-1) as Groups
-      if (g.code !== undefined) return whole
-      const url = (g.linked ?? g.auto ?? g.bare)!
+    // the capture groups arrive in the order SCAN opens them
+    const decorate = (
+      whole: string,
+      code?: string,
+      _backticks?: string,
+      linked?: string,
+      auto?: string,
+      bare?: string,
+    ) => {
+      if (code !== undefined) return whole
+      const url = (linked ?? auto ?? bare)!
       const pr = parsePrUrl(url)!
       if (!prs.has(githubUrl(pr))) prs.set(githubUrl(pr), pr)
-      const link = g.linked === undefined ? `[${pr.repo}#${pr.number}](${url})` : whole
+      const link = linked === undefined ? `[${pr.repo}#${pr.number}](${url})` : whole
 
       return `${link} [⬡ Graphite](${graphiteUrl(pr)})`
-    })
+    }
+
+    return line.replace(SCAN, decorate)
   })
 
   return { text: lines.join('\n'), prs: [...prs.values()] }
