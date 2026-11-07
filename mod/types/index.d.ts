@@ -41,6 +41,12 @@ export type Snapshot =
 
 export type RepoSnapshot = Extract<Snapshot, { topLevel: string }>
 
+export type CommandLink = 'track' | 'restack' | 'sync' | 'init'
+
+export type BandRun = { argv: string[]; dir: string; exitCode: number; summary: string }
+
+export type Running = { link: CommandLink; row: string }
+
 declare module 'claude-code' {
   interface PluginState {
     'jake-opener': {
@@ -48,6 +54,8 @@ declare module 'claude-code' {
       // fork branch → the child the ladder follows
       forkPicks: Record<string, string>
       reportedErrors: string | null
+      bandRuns: BandRun[]
+      running: Running | null
       editorCommand: string[] | null
     }
   }

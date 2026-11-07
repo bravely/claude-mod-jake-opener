@@ -4,7 +4,7 @@ import { BAND, CACHE, STACK, pr, repo, seed } from './fixtures'
 import { lines } from './shown'
 
 const LADDER = [
-  '● [Graphite]#301 Session cookie per worktree',
+  '● [Graphite]#301 Session cookie per worktree ↻ restack',
   '◯ [Graphite]#300 Seed per-worktree fixtures',
   '‹/› ● [Graphite]#298 Give each worktree its own ports',
   '● [Graphite]#297 Add worktree dev databases',
@@ -38,7 +38,7 @@ test('a fork shows one branch at a time, and stepping it swaps that row and ever
   const ui = await $.ui.mount(BAND)
 
   expect(lines(await ui.drawn())).toEqual([
-    '⑂ 1/2 ● [Graphite]#301 Session cookie per worktree',
+    '⑂ 1/2 ● [Graphite]#301 Session cookie per worktree ↻ restack',
     '⑂ 1/2 ◯ [Graphite]#300 Seed per-worktree fixtures',
     '‹/› ● [Graphite]#298 Give each worktree its own ports',
     '● [Graphite]#297 Add worktree dev databases',
@@ -96,12 +96,12 @@ const cases = [
       branch: 'jake/scratch',
       ghPrs: { byBranch: { 'jake/scratch': pr(310, 'open', 'Scratch: try a new seed script') }, titles: {} },
     }),
-    band: ['‹/› ● [Graphite]#310 Scratch: try a new seed script · not tracked', '‹/› ┴ main'],
+    band: ['‹/› ● [Graphite]#310 Scratch: try a new seed script · not tracked gt track', '‹/› ┴ main'],
   },
   {
     name: '2, a branch gt does not track, with no PR',
     snapshot: repo({ branch: 'jake/scratch' }),
-    band: ['‹/› ◌ no PR jake/scratch · not tracked', '‹/› ┴ main'],
+    band: ['‹/› ◌ no PR jake/scratch · not tracked gt track', '‹/› ┴ main'],
   },
   {
     name: '3, detached HEAD',
@@ -113,7 +113,7 @@ const cases = [
     snapshot: repo({ branch: 'HEAD', rebase: 'ports' }),
     band: [
       ...LADDER.slice(0, 2),
-      '‹/› ● [Graphite]#298 Give each worktree its own ports · rebase stopped on a conflict',
+      '‹/› ● [Graphite]#298 Give each worktree its own ports · rebase stopped on a conflict fix it',
       ...LADDER.slice(3),
     ],
   },
@@ -126,7 +126,7 @@ const cases = [
       prCache: undefined,
       ghPrs: { byBranch: { feature: pr(312, 'open', 'Add CSV export') }, titles: {} },
     }),
-    band: ['‹/› ● [Graphite]#312 Add CSV export', '‹/› ┴ main · gt not initialised here'],
+    band: ['‹/› ● [Graphite]#312 Add CSV export', '‹/› ┴ main · gt not initialised here gt init'],
   },
   {
     name: '5b, gt not installed',
@@ -146,8 +146,8 @@ const cases = [
     }),
     band: [
       ...LADDER.slice(0, 3),
-      '● [Graphite]#297 Add worktree dev databases',
-      '✓ [Graphite]#295 Split settings into sections',
+      '● [Graphite]#297 Add worktree dev databases ↻ restack',
+      '✓ [Graphite]#295 Split settings into sections gt sync',
       '‹/› ┴ main',
     ],
   },
@@ -214,6 +214,22 @@ test('a problem turns the current row soft red, and a gone PR is struck through'
     dimColor: true,
   })
   expect((await ui.find({ type: 'Text', text: /rebase stopped/ }))?.props.color).toBe('error')
+  await ui.unmount()
+})
+
+test('fix it drafts a request to resolve the conflict, unsent', async ($, on) => {
+  seed(on, repo({ branch: 'HEAD', rebase: 'ports' }))
+  const filled: string[] = []
+  on('prompt.fill', (_, e) => {
+    filled.push(e.text)
+    return { isFilled: true }
+  })
+  const ui = await $.ui.mount(BAND)
+
+  await ui.press({ key: 'fix-ports', link: { href: 'https://fix.invalid/ports' } })
+  expect(filled).toEqual([
+    'The restack of ports stopped on a conflict. Resolve the conflict and continue the restack.',
+  ])
   await ui.unmount()
 })
 

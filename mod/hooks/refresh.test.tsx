@@ -105,9 +105,9 @@ test('once the desktop attaches, the band draws what git, gt, its cache, ccd_pr 
   expect(lines(await ui.drawn())).toEqual([
     '● [Graphite]#12 Probe gt sync',
     '──────────',
-    '◯ [Graphite]#300 Seed per-worktree fixtures',
+    '◯ [Graphite]#300 Seed per-worktree fixtures ↻ restack',
     '‹/› ● [Graphite]#298 Give each worktree its own ports',
-    '✓ [Graphite]#295 Split settings into sections',
+    '✓ [Graphite]#295 Split settings into sections gt sync',
     '‹/› ┴ main',
   ])
   await ui.unmount()
@@ -212,7 +212,7 @@ test('a gh failure the band shows is raised as one turn per distinct error', asy
   await wake()
   const ui = await $.ui.mount(BAND)
   expect(lines(await ui.drawn())[2]).toBe(
-    '◌ PR ? fixtures · gh pr list failed: HTTP 401: Bad credentials (https://api.github.com/graphql)',
+    '◌ PR ? fixtures ↻ restack · gh pr list failed: HTTP 401: Bad credentials (https://api.github.com/graphql)',
   )
   await ui.unmount()
   repo.gh = () => ({ exitCode: 1, stderr: 'error connecting to api.github.com\n' })
